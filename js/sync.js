@@ -6,12 +6,12 @@ var CloudSync = (function () {
   'use strict';
 
   var firebaseConfig = {
-    apiKey: "AIzaSyBEXAMPLE_KEY_REPLACE_ME",
-    authDomain: "excel-editor-XXXX.firebaseapp.com",
-    projectId: "excel-editor-XXXX",
-    storageBucket: "excel-editor-XXXX.appspot.com",
-    messagingSenderId: "000000000000",
-    appId: "1:000000000000:web:xxxxxxxxxxxxxxxxxxxx",
+    apiKey: "AIzaSyDajLamE0J5dpjclHMX9zm1i59rwOL6a28",
+    authDomain: "excel-editor32.firebaseapp.com",
+    projectId: "excel-editor32",
+    storageBucket: "excel-editor32.firebasestorage.app",
+    messagingSenderId: "713322690524",
+    appId: "1:713322690524:web:ce16f604e22c3c31388119",
   };
 
   var db = null;
