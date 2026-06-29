@@ -1,0 +1,188 @@
+.table-editor-wrapper {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  width: 100%;
+  overflow: auto;
+}
+
+.table-editor__toolbar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.table-editor__btn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #374151;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 180ms ease;
+  font-family: inherit;
+}
+
+.table-editor__btn:hover {
+  border-color: #6366f1;
+  color: #6366f1;
+  background: rgba(99, 102, 241, 0.06);
+}
+
+.table-editor__btn--add-row:hover,
+.table-editor__btn--add-col:hover {
+  border-color: #10b981;
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.06);
+}
+
+.table-editor__btn--del-row:hover,
+.table-editor__btn--del-col:hover {
+  border-color: #ef4444;
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.06);
+}
+
+.table-editor__table-wrap {
+  overflow-x: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+}
+
+.table-editor__table {
+  border-collapse: collapse;
+  width: max-content;
+  min-width: 100%;
+  table-layout: fixed;
+}
+
+.table-editor__th {
+  position: relative;
+  padding: 10px 14px;
+  background: #f9fafb;
+  border-bottom: 2px solid #e5e7eb;
+  border-right: 1px solid #e5e7eb;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: #374151;
+  text-align: left;
+  user-select: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.table-editor__th:last-child {
+  border-right: none;
+}
+
+.table-editor__header-text {
+  pointer-events: none;
+}
+
+.table-editor__resize-handle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  background: transparent;
+  transition: background 150ms ease;
+}
+
+.table-editor__resize-handle:hover {
+  background: #6366f1;
+}
+
+.table-editor__td {
+  padding: 8px 12px;
+  border-bottom: 1px solid #f3f4f6;
+  border-right: 1px solid #f3f4f6;
+  font-size: 0.875rem;
+  color: #1f2937;
+  outline: none;
+  cursor: cell;
+  min-height: 36px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background 120ms ease;
+}
+
+.table-editor__td:last-child {
+  border-right: none;
+}
+
+.table-editor__td:focus {
+  box-shadow: inset 0 0 0 2px #6366f1;
+  background: rgba(99, 102, 241, 0.04);
+}
+
+.table-editor__td--selected {
+  background: rgba(99, 102, 241, 0.06);
+}
+
+.table-editor__td--editing {
+  padding: 2px;
+  box-shadow: inset 0 0 0 2px #6366f1;
+}
+
+.table-editor__input {
+  width: 100%;
+  height: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 0.875rem;
+  color: #1f2937;
+  padding: 4px 8px;
+}
+
+tr:last-child .table-editor__td {
+  border-bottom: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  .table-editor__btn {
+    background: #1f2937;
+    border-color: #374151;
+    color: #d1d5db;
+  }
+
+  .table-editor__btn:hover {
+    border-color: #818cf8;
+    color: #818cf8;
+    background: rgba(129, 140, 248, 0.1);
+  }
+
+  .table-editor__table-wrap {
+    border-color: #374151;
+  }
+
+  .table-editor__th {
+    background: #111827;
+    border-color: #374151;
+    color: #d1d5db;
+  }
+
+  .table-editor__td {
+    border-color: #1f2937;
+    color: #e5e7eb;
+  }
+
+  .table-editor__td:focus {
+    box-shadow: inset 0 0 0 2px #818cf8;
+    background: rgba(129, 140, 248, 0.08);
+  }
+
+  .table-editor__td--selected {
+    background: rgba(129, 140, 248, 0.1);
+  }
+
+  .table-editor__input {
+    color: #e5e7eb;
+  }
+}

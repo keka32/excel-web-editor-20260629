@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Excel Uploader</title>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, sans-serif;
+      background: #f5f7fa;
+      color: #1a1a2e;
+      display: flex;
+      justify-content: center;
+      padding: 2rem 1rem;
+      min-height: 100vh;
+    }
+
+    .uploader-container {
+      width: 100%;
+      max-width: 960px;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+
+    .subtitle {
+      color: #64748b;
+      font-size: 0.875rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .drop-zone {
+      position: relative;
+      border: 2px dashed #cbd5e1;
+      border-radius: 12px;
+      padding: 3rem 2rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s, transform 0.15s;
+      background: #fff;
+    }
+
+    .drop-zone:hover {
+      border-color: #6366f1;
+      background: #f8faff;
+    }
+
+    .drop-zone.drag-over {
+      border-color: #6366f1;
+      background: #eef2ff;
+      transform: scale(1.01);
+    }
+
+    .drop-zone.has-error {
+      border-color: #ef4444;
+      background: #fef2f2;
+    }
+
+    .drop-zone-icon {
+      font-size: 2.5rem;
+      margin-bottom: 0.75rem;
+      color: #6366f1;
+    }
+
+    .drop-zone-text {
+      font-size: 1rem;
+      color: #334155;
+    }
+
+    .drop-zone-text strong {
+      color: #6366f1;
+    }
+
+    .drop-zone-hint {
+      font-size: 0.8rem;
+      color: #94a3b8;
+      margin-top: 0.5rem;
+    }
+
+    .error-message {
+      display: none;
+      margin-top: 1rem;
+      padding: 0.75rem 1rem;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: 8px;
+      color: #dc2626;
+      font-size: 0.875rem;
+    }
+
+    .error-message.visible {
+      display: block;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 1.5rem;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+
+    .file-info {
+      font-size: 0.875rem;
+      color: #475569;
+    }
+
+    .file-info strong {
+      color: #1e293b;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      border: none;
+      cursor: pointer;
+      transition: background 0.15s, box-shadow 0.15s;
+    }
+
+    .btn-primary {
+      background: #6366f1;
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: #4f46e5;
+    }
+
+    .btn-secondary {
+      background: #e2e8f0;
+      color: #334155;
+    }
+
+    .btn-secondary:hover {
+      background: #cbd5e1;
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .table-wrapper {
+      margin-top: 1.5rem;
+      overflow-x: auto;
+      border-radius: 10px;
+      border: 1px solid #e2e8f0;
+      background: #fff;
+      display: none;
+    }
+
+    .table-wrapper.visible {
+      display: block;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8125rem;
+    }
+
+    thead {
+      background: #f8fafc;
+      position: sticky;
+      top: 0;
+    }
+
+    th {
+      padding: 0.75rem 1rem;
+      text-align: left;
+      font-weight: 600;
+      color: #475569;
+      border-bottom: 2px solid #e2e8f0;
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 0.625rem 1rem;
+      border-bottom: 1px solid #f1f5f9;
+      color: #1e293b;
+      max-width: 280px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    tr:hover td {
+      background: #f8faff;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 2rem;
+      color: #94a3b8;
+    }
+
+    .sheet-selector {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .sheet-tab {
+      padding: 0.375rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.8125rem;
+      background: #f1f5f9;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .sheet-tab:hover {
+      background: #e2e8f0;
+    }
+
+    .sheet-tab.active {
+      background: #6366f1;
+      color: #fff;
+      border-color: #6366f1;
+    }
+
+    .summary-bar {
+      display: flex;
+      gap: 1.5rem;
+      margin-top: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .summary-item {
+      font-size: 0.8125rem;
+      color: #64748b;
+    }
+
+    .summary-item span {
+      font-weight: 600;
+      color: #1e293b;
+    }
+
+    @media (max-width: 480px) {
+      .drop-zone {
+        padding: 2rem 1rem;
+      }
+      .drop-zone-icon {
+        font-size: 2rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="uploader-container">
+    <h1>Excel Uploader</h1>
+    <p class="subtitle">Upload .xlsx or .xls files — parsed and displayed as a table</p>
+
+    <div class="drop-zone" id="dropZone">
+      <div class="drop-zone-icon">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+          <polyline points="17 8 12 3 7 8" />
+          <line x1="12" y1="3" x2="12" y2="15" />
+        </svg>
+      </div>
+      <div class="drop-zone-text">
+        <strong>Click to select</strong> or drag &amp; drop your Excel file here
+      </div>
+      <div class="drop-zone-hint">Supports .xlsx, .xls files</div>
+    </div>
+    <input type="file" id="fileInput" accept=".xlsx,.xls" hidden />
+
+    <div class="error-message" id="errorMessage"></div>
+
+    <div class="toolbar" id="toolbar" style="display:none">
+      <div class="file-info" id="fileInfo"></div>
+      <div style="display:flex;gap:0.5rem">
+        <button class="btn btn-secondary" id="clearBtn">Clear</button>
+        <button class="btn btn-primary" id="copyJsonBtn">Copy JSON</button>
+      </div>
+    </div>
+
+    <div class="sheet-selector" id="sheetSelector"></div>
+
+    <div class="summary-bar" id="summaryBar"></div>
+
+    <div class="table-wrapper" id="tableWrapper">
+      <div id="tableContainer"></div>
+    </div>
+  </div>
+
+  <script>
+    class ExcelUploader {
+      constructor(container) {
+        this.dropZone = container.querySelector('#dropZone');
+        this.fileInput = container.querySelector('#fileInput');
+        this.errorEl = container.querySelector('#errorMessage');
+        this.toolbar = container.querySelector('#toolbar');
+        this.fileInfo = container.querySelector('#fileInfo');
+        this.clearBtn = container.querySelector('#clearBtn');
+        this.copyBtn = container.querySelector('#copyJsonBtn');
+        this.sheetSelector = container.querySelector('#sheetSelector');
+        this.summaryBar = container.querySelector('#summaryBar');
+        this.tableWrapper = container.querySelector('#tableWrapper');
+        this.tableContainer = container.querySelector('#tableContainer');
+
+        this.workbook = null;
+        this.sheetNames = [];
+        this.activeSheet = null;
+        this.jsonData = [];
+
+        this.bindEvents();
+      }
+
+      bindEvents() {
+        this.dropZone.addEventListener('click', () => this.fileInput.click());
+
+        this.dropZone.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          this.dropZone.classList.add('drag-over');
+        });
+
+        this.dropZone.addEventListener('dragleave', () => {
+          this.dropZone.classList.remove('drag-over');
+        });
+
+        this.dropZone.addEventListener('drop', (e) => {
+          e.preventDefault();
+          this.dropZone.classList.remove('drag-over');
+          const files = e.dataTransfer.files;
+          if (files.length > 0) this.handleFile(files[0]);
+        });
+
+        this.fileInput.addEventListener('change', (e) => {
+          if (e.target.files.length > 0) this.handleFile(e.target.files[0]);
+        });
+
+        this.clearBtn.addEventListener('click', () => this.reset());
+
+        this.copyBtn.addEventListener('click', () => this.copyJson());
+      }
+
+      handleFile(file) {
+        this.clearError();
+
+        const ext = file.name.split('.').pop().toLowerCase();
+        if (!['xlsx', 'xls'].includes(ext)) {
+          this.showError('Invalid file type. Please upload a .xlsx or .xls file.');
+          return;
+        }
+
+        if (file.size === 0) {
+          this.showError('The file is empty. Please upload a non-empty Excel file.');
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const data = new Uint8Array(e.target.result);
+            this.workbook = XLSX.read(data, { type: 'array' });
+
+            if (!this.workbook.SheetNames || this.workbook.SheetNames.length === 0) {
+              this.showError('The file contains no sheets.');
+              return;
+            }
+
+            this.sheetNames = this.workbook.SheetNames;
+            this.renderSheetTabs();
+            this.switchSheet(this.sheetNames[0]);
+            this.renderFileInfo(file);
+            this.toolbar.style.display = 'flex';
+            this.dropZone.classList.remove('has-error');
+
+            this.dispatchData();
+          } catch (err) {
+            this.showError('Failed to parse file: ' + err.message);
+          }
+        };
+
+        reader.onerror = () => {
+          this.showError('Failed to read file.');
+        };
+
+        reader.readAsArrayBuffer(file);
+      }
+
+      switchSheet(name) {
+        this.activeSheet = name;
+        const sheet = this.workbook.Sheets[name];
+        this.jsonData = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+
+        this.renderTable(this.jsonData);
+        this.renderSummary(this.jsonData, name);
+        this.updateActiveTab(name);
+        this.dispatchData();
+      }
+
+      renderTable(data) {
+        this.tableContainer.innerHTML = '';
+
+        if (!data || data.length === 0) {
+          this.tableWrapper.classList.add('visible');
+          this.tableContainer.innerHTML = '<div class="empty-state">Sheet is empty</div>';
+          return;
+        }
+
+        this.tableWrapper.classList.add('visible');
+        const cols = Object.keys(data[0]);
+        const table = document.createElement('table');
+
+        const thead = document.createElement('thead');
+        const headerRow = document.createElement('tr');
+        cols.forEach((col) => {
+          const th = document.createElement('th');
+          th.textContent = col;
+          headerRow.appendChild(th);
+        });
+        thead.appendChild(headerRow);
+        table.appendChild(thead);
+
+        const tbody = document.createElement('tbody');
+        data.forEach((row) => {
+          const tr = document.createElement('tr');
+          cols.forEach((col) => {
+            const td = document.createElement('td');
+            const val = row[col];
+            td.textContent = val != null ? String(val) : '';
+            const d = new Date(val);
+            if (!isNaN(d.getTime()) && typeof val === 'number' && val > 40000) {
+              td.textContent = XLSX.SSF.format('yyyy-mm-dd hh:mm:ss', val);
+            }
+            tr.appendChild(td);
+          });
+          tbody.appendChild(tr);
+        });
+        table.appendChild(tbody);
+
+        this.tableContainer.appendChild(table);
+      }
+
+      renderSummary(data, sheetName) {
+        this.summaryBar.innerHTML = '';
+        if (!data || data.length === 0) return;
+
+        const items = [
+          { label: 'Sheet', value: sheetName },
+          { label: 'Rows', value: data.length.toLocaleString() },
+          { label: 'Columns', value: Object.keys(data[0]).length },
+        ];
+
+        items.forEach((item) => {
+          const div = document.createElement('div');
+          div.className = 'summary-item';
+          div.innerHTML = `${item.label}: <span>${item.value}</span>`;
+          this.summaryBar.appendChild(div);
+        });
+      }
+
+      renderSheetTabs() {
+        this.sheetSelector.innerHTML = '';
+        this.sheetNames.forEach((name) => {
+          const btn = document.createElement('button');
+          btn.className = 'sheet-tab';
+          btn.textContent = name;
+          btn.addEventListener('click', () => this.switchSheet(name));
+          this.sheetSelector.appendChild(btn);
+        });
+      }
+
+      updateActiveTab(name) {
+        this.sheetSelector.querySelectorAll('.sheet-tab').forEach((btn) => {
+          btn.classList.toggle('active', btn.textContent === name);
+        });
+      }
+
+      renderFileInfo(file) {
+        const size = file.size < 1024
+          ? file.size + ' B'
+          : file.size < 1048576
+            ? (file.size / 1024).toFixed(1) + ' KB'
+            : (file.size / 1048576).toFixed(1) + ' MB';
+        this.fileInfo.innerHTML = `<strong>${file.name}</strong> &middot; ${size}`;
+      }
+
+      showError(msg) {
+        this.errorEl.textContent = msg;
+        this.errorEl.classList.add('visible');
+        this.dropZone.classList.add('has-error');
+      }
+
+      clearError() {
+        this.errorEl.textContent = '';
+        this.errorEl.classList.remove('visible');
+        this.dropZone.classList.remove('has-error');
+      }
+
+      reset() {
+        this.workbook = null;
+        this.sheetNames = [];
+        this.activeSheet = null;
+        this.jsonData = [];
+        this.fileInput.value = '';
+        this.toolbar.style.display = 'none';
+        this.tableWrapper.classList.remove('visible');
+        this.tableContainer.innerHTML = '';
+        this.sheetSelector.innerHTML = '';
+        this.summaryBar.innerHTML = '';
+        this.clearError();
+        this.dispatchData();
+      }
+
+      copyJson() {
+        if (this.jsonData.length === 0) return;
+        const text = JSON.stringify(this.jsonData, null, 2);
+        navigator.clipboard.writeText(text).then(() => {
+          this.copyBtn.textContent = 'Copied!';
+          setTimeout(() => { this.copyBtn.textContent = 'Copy JSON'; }, 1500);
+        }).catch(() => {
+          const ta = document.createElement('textarea');
+          ta.value = text;
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+          this.copyBtn.textContent = 'Copied!';
+          setTimeout(() => { this.copyBtn.textContent = 'Copy JSON'; }, 1500);
+        });
+      }
+
+      dispatchData() {
+        const event = new CustomEvent('excel-data', {
+          detail: {
+            data: this.jsonData,
+            sheetNames: this.sheetNames,
+            activeSheet: this.activeSheet,
+            workbook: this.workbook
+              ? { SheetNames: this.workbook.SheetNames }
+              : null,
+          },
+          bubbles: true,
+        });
+        this.dropZone.dispatchEvent(event);
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const container = document.querySelector('.uploader-container');
+      new ExcelUploader(container);
+    });
+  </script>
+</body>
+</html>

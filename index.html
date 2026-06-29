@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="tr" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Excel Web Editor</title>
+  <meta name="description" content="Ücretsiz, tarayıcı tabanlı çoklu Excel düzenleyici. Çok cihazlı, mobil uyumlu.">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <link rel="stylesheet" href="css/base.css">
+</head>
+<body>
+  <header class="header">
+    <div class="header-inner">
+      <h1 class="logo">📊 Excel Editor</h1>
+      <nav class="header-nav">
+        <button id="btnNew" class="btn btn-sm" title="Yeni">＋</button>
+        <button id="btnOpen" class="btn btn-sm" title="Aç">📂</button>
+        <button id="btnExport" class="btn btn-sm" title="Dışa Aktar">💾</button>
+        <button id="btnSync" class="btn btn-sm" title="Buluta Senkronize Et">☁️</button>
+        <button id="btnTheme" class="btn btn-sm" title="Tema">🌓</button>
+      </nav>
+    </div>
+  </header>
+
+  <div class="tab-bar" id="tabBar">
+    <div class="tab-list" id="tabList"></div>
+  </div>
+
+  <main class="container">
+    <section class="toolbar">
+      <div class="toolbar-left">
+        <span id="fileName" class="file-label">Yeni Çalışma Kitabı</span>
+        <span id="cellInfo" class="cell-label">Seçili: A1</span>
+        <span id="autoSaveStatus" class="auto-save-status">💾</span>
+      </div>
+      <div class="toolbar-right">
+        <input type="text" id="searchInput" class="search-input" placeholder="🔍 Ara..." spellcheck="false">
+        <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" hidden>
+      </div>
+    </section>
+
+    <section class="drop-zone" id="dropZone">
+      <div class="drop-zone-content">
+        <span class="drop-icon">📁</span>
+        <p>Excel dosyalarını sürükleyip bırakın</p>
+        <span class="drop-hint">.xlsx, .xls, .csv · Çoklu dosya desteklenir</span>
+      </div>
+    </section>
+
+    <section class="table-wrapper">
+      <div id="tableContainer"></div>
+    </section>
+
+    <section class="formula-bar">
+      <label for="formulaInput" class="formula-label">fx</label>
+      <input type="text" id="formulaInput" class="formula-input" placeholder="Hücre değeri..." spellcheck="false">
+    </section>
+
+    <div class="status-bar">
+      <span id="statusText">Hazır</span>
+      <span id="paginationInfo"></span>
+    </div>
+  </main>
+
+  <!-- Mobil düzenleme overlay -->
+  <div class="edit-overlay" id="editOverlay">
+    <div class="edit-overlay-bar">
+      <button id="editCancel" class="btn btn-sm">✕</button>
+      <span id="editLabel" class="edit-label">A1</span>
+      <button id="editDone" class="btn btn-sm btn-primary">✓</button>
+    </div>
+    <input type="text" id="editInput" class="edit-input" placeholder="Değer girin..." autocomplete="off">
+  </div>
+
+  <!-- Alt gezinme çubuğu (mobil) -->
+  <nav class="bottom-nav" id="bottomNav">
+    <button id="btnEdit" class="bottom-nav-btn" title="Düzenle">
+      <span class="bn-icon">✏️</span><span class="bn-label">Düzenle</span>
+    </button>
+    <button class="bottom-nav-btn" onclick="document.getElementById('fileInput').click()">
+      <span class="bn-icon">📂</span><span class="bn-label">Aç</span>
+    </button>
+    <button class="bottom-nav-btn" onclick="document.getElementById('btnExport').click()">
+      <span class="bn-icon">💾</span><span class="bn-label">Kaydet</span>
+    </button>
+    <button class="bottom-nav-btn" onclick="document.getElementById('btnNew').click()">
+      <span class="bn-icon">＋</span><span class="bn-label">Yeni</span>
+    </button>
+  </nav>
+
+  <footer class="footer">
+    <span>SheetJS v0.20.2</span>
+    <span>Firebase Sync · GitHub Pages</span>
+  </footer>
+
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script src="js/storage.js"></script>
+  <script src="js/theme.js"></script>
+  <script src="js/uploader.js"></script>
+  <script src="js/tabs.js"></script>
+  <script src="js/sync.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
