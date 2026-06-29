@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Firebase Test</title>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+  <h2>Firebase Baglanti Testi</h2>
+  <pre id="log" style="background:#111;color:#0f0;padding:1rem;font:12px monospace;min-height:300px;"></pre>
+  <script>
+    var log = document.getElementById('log');
+    function L(msg) { log.textContent += msg + '\n'; }
+    L('1. Firebase SDK yuklendi: ' + (typeof firebase !== 'undefined'));
+
+    var cfg = {
+      apiKey: "AIzaSyDajLamE0J5dpjclHMX9zm1i59rwOL6a28",
+      authDomain: "excel-editor32.firebaseapp.com",
+      projectId: "excel-editor32",
+      storageBucket: "excel-editor32.firebasestorage.app",
+      messagingSenderId: "713322690524",
+      appId: "1:713322690524:web:ce16f604e22c3c31388119",
+    };
+
+    try {
+      firebase.initializeApp(cfg);
+      L('2. Firebase initializeApp OK');
+    } catch(e) {
+      L('2. FAIL: ' + e.message);
+    }
+
+    L('3. Anonim giris deneniyor...');
+    firebase.auth().signInAnonymously()
+      .then(function(u) {
+        L('4. Auth OK! uid=' + u.user.uid);
+        L('5. Firestore baglaniliyor...');
+        var db = firebase.firestore();
+        L('6. Test yazma...');
+        return db.collection('test').doc('_probe_').set({ts: Date.now()});
+      })
+      .then(function() {
+        L('7. YAZMA BASARILI!');
+        L('8. Test okuma...');
+        return firebase.firestore().collection('test').doc('_probe_').get();
+      })
+      .then(function(doc) {
+        L('9. OKUMA BASARILI! ts=' + (doc.data()||{}).ts);
+        L('✅ TUM TESTLER BASARILI - Sync calisiyor olmali!');
+      })
+      .catch(function(e) {
+        L('❌ HATA: ' + (e.code || e.message));
+        if (e.code === 'permission-denied') L('   => Firestore kurallari izin vermiyor');
+        if (e.code === 'auth/network-request-failed') L('   => Internet baglantisi yok');
+        L('   Tam hata: ' + JSON.stringify(e));
+      });
+  </script>
+</body>
+</html>
