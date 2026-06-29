@@ -1,6 +1,8 @@
-// app.js — Excel Editor with multi-tab + mobile support
+// app.js — Excel Editor with multi-tab + mobile + manual sync
 (function () {
   'use strict';
+
+  var isMobile = window.matchMedia('(max-width: 768px)').matches;
 
   /* ──────────────────────────────
    *  DOM refs
@@ -17,7 +19,6 @@
   var editOverlay = $('editOverlay');
   var editInput = $('editInput');
   var editLabel = $('editLabel');
-  var tabList = $('tabList');
 
   /* ──────────────────────────────
    *  Toast
@@ -45,7 +46,7 @@
   var tabs = TabManager.create({
     storage: storage,
     onSwitch: function (t) { loadTab(t); },
-    onChange: function (n) { if ($('tabCount')) $('tabCount').textContent = n; }
+    onChange: function (n) {}
   });
 
   window.tabs = tabs;
@@ -120,10 +121,18 @@
       for (var cc = 0; cc < COLS; cc++) {
         var v = getCell(r, cc);
         var td = document.createElement('td');
-        td.contentEditable = false;
         td.dataset.row = r; td.dataset.col = cc; td.textContent = v;
-        td.addEventListener('click', onCellClick);
-        td.addEventListener('dblclick', onCellDblClick);
+
+        if (isMobile) {
+          td.contentEditable = false;
+          td.addEventListener('click', onCellTap);
+          td.addEventListener('dblclick', onCellDblTap);
+        } else {
+          td.contentEditable = true;
+          td.addEventListener('focus', onCellFocusDesktop);
+          td.addEventListener('input', onCellInputDesktop);
+          td.addEventListener('keydown', onCellKeyDesktop);
+        }
         tr.appendChild(td);
       }
       tbd.appendChild(tr);
@@ -141,19 +150,54 @@
   }
 
   /* ──────────────────────────────
-   *  Cell interaction (mobile-first)
+   *  DESKTOP: contentEditable cells
+   * ────────────────────────────── */
+  function onCellFocusDesktop(e) {
+    var td = e.currentTarget;
+    var r = +td.dataset.row, c = +td.dataset.col;
+    cellInfoEl.textContent = 'Secili: ' + cellRef(r, c);
+    formulaInput.value = getCell(r, c);
+  }
+
+  function onCellInputDesktop(e) {
+    var td = e.currentTarget;
+    var r = +td.dataset.row, c = +td.dataset.col;
+    var val = td.textContent.trim();
+    setCell(r, c, val);
+    formulaInput.value = val;
+    tabs.markDirty();
+    autoSave();
+  }
+
+  function onCellKeyDesktop(e) {
+    var td = e.currentTarget;
+    var r = +td.dataset.row, c = +td.dataset.col;
+    var nr = r, nc = c;
+    switch (e.key) {
+      case 'Enter': e.preventDefault(); nr = Math.min(r + 1, ROWS - 1); break;
+      case 'Tab': e.preventDefault(); nc = e.shiftKey ? Math.max(c - 1, 0) : Math.min(c + 1, COLS - 1); break;
+      case 'ArrowUp': e.preventDefault(); nr = Math.max(r - 1, 0); break;
+      case 'ArrowDown': e.preventDefault(); nr = Math.min(r + 1, ROWS - 1); break;
+      default: return;
+    }
+    var tds = container.querySelectorAll('td');
+    for (var i = 0; i < tds.length; i++) {
+      if (+tds[i].dataset.row === nr && +tds[i].dataset.col === nc) { tds[i].focus(); break; }
+    }
+  }
+
+  /* ──────────────────────────────
+   *  MOBILE: tap-select + overlay
    * ────────────────────────────── */
   var selectedCellTD = null;
 
-  function onCellClick(e) {
-    var td = e.currentTarget;
-    selectCell(td);
+  function onCellTap(e) {
+    selectCell(e.currentTarget);
   }
 
-  function onCellDblClick(e) {
-    var td = e.currentTarget;
-    selectCell(td);
-    openEditOverlay(td);
+  function onCellDblTap(e) {
+    selectCell(e.currentTarget);
+    openEditOverlay(e.currentTarget);
   }
 
   function selectCell(td) {
@@ -167,11 +211,10 @@
 
   function openEditOverlay(td) {
     if (!editOverlay || !editInput) return;
-    var r = +td.dataset.row, c = +td.dataset.col;
-    editLabel.textContent = cellRef(r, c);
-    editInput.value = getCell(r, c);
-    editInput.dataset.row = r;
-    editInput.dataset.col = c;
+    editLabel.textContent = cellRef(+td.dataset.row, +td.dataset.col);
+    editInput.value = td.textContent.trim();
+    editInput.dataset.row = td.dataset.row;
+    editInput.dataset.col = td.dataset.col;
     editOverlay.classList.add('open');
     editInput.focus();
   }
@@ -190,18 +233,35 @@
     editOverlay.classList.remove('open');
   }
 
-  if ($('editDone')) {
-    $('editDone').addEventListener('click', function () { closeEditOverlay(true); });
-  }
-  if ($('editCancel')) {
-    $('editCancel').addEventListener('click', function () { closeEditOverlay(false); });
-  }
+  if ($('editDone')) $('editDone').addEventListener('click', function () { closeEditOverlay(true); });
+  if ($('editCancel')) $('editCancel').addEventListener('click', function () { closeEditOverlay(false); });
+  if ($('btnEdit')) $('btnEdit').addEventListener('click', function () { if (selectedCellTD) openEditOverlay(selectedCellTD); });
 
-  if ($('btnEdit')) {
-    $('btnEdit').addEventListener('click', function () {
-      if (selectedCellTD) openEditOverlay(selectedCellTD);
-    });
-  }
+  // Mobilde ok tuslariyla gezinme
+  document.addEventListener('keydown', function (e) {
+    if (isMobile && selectedCellTD && !editOverlay.classList.contains('open')) {
+      var r = +selectedCellTD.dataset.row, c = +selectedCellTD.dataset.col;
+      var nr = r, nc = c;
+      switch (e.key) {
+        case 'ArrowUp': e.preventDefault(); nr = Math.max(r - 1, 0); break;
+        case 'ArrowDown': e.preventDefault(); nr = Math.min(r + 1, ROWS - 1); break;
+        case 'ArrowLeft': e.preventDefault(); nc = Math.max(c - 1, 0); break;
+        case 'ArrowRight': e.preventDefault(); nc = Math.min(c + 1, COLS - 1); break;
+        case 'Enter': e.preventDefault(); openEditOverlay(selectedCellTD); return;
+        case 'Delete': case 'Backspace':
+          e.preventDefault();
+          setCell(r, c, '');
+          selectedCellTD.textContent = '';
+          tabs.markDirty(); autoSave();
+          return;
+        default: return;
+      }
+      var tds = container.querySelectorAll('td');
+      for (var i = 0; i < tds.length; i++) {
+        if (+tds[i].dataset.row === nr && +tds[i].dataset.col === nc) { selectCell(tds[i]); break; }
+      }
+    }
+  });
 
   /* ──────────────────────────────
    *  Formula bar
@@ -209,10 +269,11 @@
   formulaInput.addEventListener('keydown', function (e) {
     if (e.key !== 'Enter') return;
     e.preventDefault();
-    if (selectedCellTD) {
-      var r = +selectedCellTD.dataset.row, c = +selectedCellTD.dataset.col;
+    var td = selectedCellTD || container.querySelector('td:focus');
+    if (td) {
+      var r = +td.dataset.row, c = +td.dataset.col;
       setCell(r, c, formulaInput.value);
-      selectedCellTD.textContent = formulaInput.value;
+      td.textContent = formulaInput.value;
       tabs.markDirty(); autoSave();
     }
   });
@@ -248,49 +309,16 @@
   if (searchInput) searchInput.addEventListener('input', function () { renderGrid(); });
 
   /* ──────────────────────────────
-   *  AutoSave + Cloud sync
+   *  AutoSave (localStorage only)
    * ────────────────────────────── */
-  var saveTimer, syncTimer;
+  var saveTimer;
   function autoSave() {
     clearTimeout(saveTimer);
     saveTimer = setTimeout(function () {
       tabs.saveCurrent();
       var el = $('autoSaveStatus');
       if (el) { el.style.opacity = '1'; setTimeout(function () { el.style.opacity = '0.5'; }, 1000); }
-      // Cloud sync — debounce 3s sonra buluta push
-      clearTimeout(syncTimer);
-      syncTimer = setTimeout(function () { pushToCloud(); }, 3000);
     }, 800);
-  }
-
-  function pushToCloud() {
-    if (!CloudSync.isReady()) return;
-    var t = tabs.getActive();
-    if (!t) return;
-    try {
-      var data = XLSX.write(t.workbook, { bookType: 'xlsx', type: 'array' });
-      CloudSync.saveFile(t.name, Array.from(new Uint8Array(data)));
-    } catch (e) {}
-  }
-
-  function pullFromCloud(name, rawData) {
-    if (!rawData) return;
-    try {
-      var data = new Uint8Array(rawData);
-      var wb = XLSX.read(data, { type: 'array' });
-      var existIdx = tabs.exists(name);
-      if (existIdx >= 0) {
-        tabs.tabs[existIdx].workbook = wb;
-        tabs.tabs[existIdx].sheetName = wb.SheetNames[0];
-        toast('Güncellendi (buluttan): ' + name, 'info');
-      } else {
-        tabs.add(name, wb);
-        toast('Yeni dosya (buluttan): ' + name, 'success');
-      }
-      if (tabs.activeIdx >= 0 && tabs.tabs[tabs.activeIdx].name === name) {
-        loadTab(tabs.getActive());
-      }
-    } catch (e) { console.warn('Pull failed:', name, e); }
   }
 
   /* ──────────────────────────────
@@ -334,7 +362,7 @@
   if ($('btnExport')) $('btnExport').addEventListener('click', doExport);
 
   /* ──────────────────────────────
-   *  Keyboard
+   *  Global keyboard shortcuts
    * ────────────────────────────── */
   document.addEventListener('keydown', function (e) {
     if (e.ctrlKey || e.metaKey) {
@@ -342,51 +370,66 @@
       if (e.key === 'e') { e.preventDefault(); doExport(); }
       if (e.key === 'n') { e.preventDefault(); tabs.newEmpty(); loadTab(tabs.getActive()); }
     }
-    if (!selectedCellTD) return;
-    var r = +selectedCellTD.dataset.row, c = +selectedCellTD.dataset.col;
-    var nr = r, nc = c;
-    switch (e.key) {
-      case 'ArrowUp': e.preventDefault(); nr = Math.max(r - 1, 0); break;
-      case 'ArrowDown': e.preventDefault(); nr = Math.min(r + 1, ROWS - 1); break;
-      case 'ArrowLeft': e.preventDefault(); nc = Math.max(c - 1, 0); break;
-      case 'ArrowRight': e.preventDefault(); nc = Math.min(c + 1, COLS - 1); break;
-      case 'Enter': e.preventDefault(); openEditOverlay(selectedCellTD); return;
-      case 'Tab': e.preventDefault(); nc = e.shiftKey ? Math.max(c - 1, 0) : Math.min(c + 1, COLS - 1); break;
-      case 'Delete': case 'Backspace':
-        e.preventDefault();
-        setCell(r, c, '');
-        selectedCellTD.textContent = '';
-        tabs.markDirty(); autoSave();
-        return;
-      default: return;
-    }
-    var tds = container.querySelectorAll('td');
-    for (var i = 0; i < tds.length; i++) {
-      if (+tds[i].dataset.row === nr && +tds[i].dataset.col === nc) { selectCell(tds[i]); break; }
-    }
   });
 
   /* ──────────────────────────────
-   *  Sync
+   *  Manual Cloud sync
    * ────────────────────────────── */
+  var syncWatching = false;
+
+  function pushAllToCloud() {
+    if (!CloudSync.isReady()) return;
+    var all = tabs.tabs;
+    for (var i = 0; i < all.length; i++) {
+      try {
+        var data = XLSX.write(all[i].workbook, { bookType: 'xlsx', type: 'array' });
+        CloudSync.saveFile(all[i].name, Array.from(new Uint8Array(data)));
+      } catch (e) {}
+    }
+  }
+
   if ($('btnSync')) {
     $('btnSync').addEventListener('click', function () {
       if (!CloudSync.isReady()) {
-        var err = CloudSync.lastError() || 'Firebase yapılandırması gerekli';
-        toast(err, 'error');
+        toast(CloudSync.lastError() || 'Senkronizasyon hazır değil', 'error');
         return;
       }
+      toast('Senkronize ediliyor...', 'info');
       tabs.saveAll();
+      pushAllToCloud();
       CloudSync.loadAllFiles().then(function (files) {
+        var added = 0;
         files.forEach(function (f) {
           try {
             var data = new Uint8Array(f.data);
             var wb = XLSX.read(data, { type: 'array' });
             tabs.add(f.name, wb);
+            added++;
           } catch (e) {}
         });
-        if (files.length) toast(files.length + ' dosya buluttan yuklendi', 'success');
         loadTab(tabs.getActive());
+        toast(added + ' dosya senkronize edildi', 'success');
+
+        if (!syncWatching) {
+          syncWatching = true;
+          CloudSync.watchChanges(function (name, rawData) {
+            if (!rawData) return;
+            try {
+              var data = new Uint8Array(rawData);
+              var wb = XLSX.read(data, { type: 'array' });
+              var existIdx = tabs.exists(name);
+              if (existIdx >= 0) {
+                tabs.tabs[existIdx].workbook = wb;
+                tabs.tabs[existIdx].sheetName = wb.SheetNames[0];
+                toast('Güncellendi: ' + name, 'info');
+              } else {
+                tabs.add(name, wb);
+                toast('Yeni: ' + name, 'success');
+              }
+              if (tabs.activeIdx >= 0 && tabs.tabs[tabs.activeIdx].name === name) loadTab(tabs.getActive());
+            } catch (e) {}
+          });
+        }
       });
     });
   }
@@ -396,30 +439,9 @@
    * ────────────────────────────── */
   function init() {
     var loaded = tabs.loadAll();
-    if (loaded.length === 0) {
-      tabs.newEmpty();
-    }
+    if (loaded.length === 0) tabs.newEmpty();
     loadTab(tabs.getActive());
     if (dropZone) dropZone.style.display = loaded.length ? 'none' : 'block';
-
-    // Firebase hazır olunca buluttan çek
-    CloudSync.onReady(function () {
-      CloudSync.loadAllFiles().then(function (files) {
-        files.forEach(function (f) {
-          try {
-            var data = new Uint8Array(f.data);
-            var wb = XLSX.read(data, { type: 'array' });
-            tabs.add(f.name, wb);
-          } catch (e) {}
-        });
-        if (files.length) toast(files.length + ' dosya buluttan yuklendi', 'success');
-        loadTab(tabs.getActive());
-      });
-      // Canlı değişiklik izle
-      CloudSync.watchChanges(function (name, rawData) {
-        pullFromCloud(name, rawData);
-      });
-    });
   }
 
   if (typeof XLSX !== 'undefined') init();
