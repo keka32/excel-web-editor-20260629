@@ -34,7 +34,9 @@ var CloudSync = (function () {
         ready = true;
         lastError = '';
         var b = document.getElementById('btnSync');
-        if (b) { b.title = 'Senkronizasyon hazır'; b.style.opacity = '1'; }
+        if (b) { b.textContent = '☁️✓'; b.title = 'Aktif'; b.style.opacity = '1'; b.style.background = '#10b98133'; }
+        var s = document.getElementById('statusText');
+        if (s) s.textContent = 'Senkronize ✓';
         console.log('[Sync] Firebase ready');
         _onReadyCallbacks.forEach(function (cb) { try { cb(); } catch (e) {} });
       }).catch(function (e) {
