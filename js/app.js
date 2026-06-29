@@ -248,16 +248,49 @@
   if (searchInput) searchInput.addEventListener('input', function () { renderGrid(); });
 
   /* ──────────────────────────────
-   *  AutoSave
+   *  AutoSave + Cloud sync
    * ────────────────────────────── */
-  var saveTimer;
+  var saveTimer, syncTimer;
   function autoSave() {
     clearTimeout(saveTimer);
     saveTimer = setTimeout(function () {
       tabs.saveCurrent();
       var el = $('autoSaveStatus');
       if (el) { el.style.opacity = '1'; setTimeout(function () { el.style.opacity = '0.5'; }, 1000); }
+      // Cloud sync — debounce 3s sonra buluta push
+      clearTimeout(syncTimer);
+      syncTimer = setTimeout(function () { pushToCloud(); }, 3000);
     }, 800);
+  }
+
+  function pushToCloud() {
+    if (!CloudSync.isReady()) return;
+    var t = tabs.getActive();
+    if (!t) return;
+    try {
+      var data = XLSX.write(t.workbook, { bookType: 'xlsx', type: 'array' });
+      CloudSync.saveFile(t.name, Array.from(new Uint8Array(data)));
+    } catch (e) {}
+  }
+
+  function pullFromCloud(name, rawData) {
+    if (!rawData) return;
+    try {
+      var data = new Uint8Array(rawData);
+      var wb = XLSX.read(data, { type: 'array' });
+      var existIdx = tabs.exists(name);
+      if (existIdx >= 0) {
+        tabs.tabs[existIdx].workbook = wb;
+        tabs.tabs[existIdx].sheetName = wb.SheetNames[0];
+        toast('Güncellendi (buluttan): ' + name, 'info');
+      } else {
+        tabs.add(name, wb);
+        toast('Yeni dosya (buluttan): ' + name, 'success');
+      }
+      if (tabs.activeIdx >= 0 && tabs.tabs[tabs.activeIdx].name === name) {
+        loadTab(tabs.getActive());
+      }
+    } catch (e) { console.warn('Pull failed:', name, e); }
   }
 
   /* ──────────────────────────────
@@ -338,7 +371,11 @@
    * ────────────────────────────── */
   if ($('btnSync')) {
     $('btnSync').addEventListener('click', function () {
-      if (!CloudSync.isReady()) { toast('Senkronizasyon hazir degil. Firebase yapilandirmasi gerekli.', 'error'); return; }
+      if (!CloudSync.isReady()) {
+        var err = CloudSync.lastError() || 'Firebase yapılandırması gerekli';
+        toast(err, 'error');
+        return;
+      }
       tabs.saveAll();
       CloudSync.loadAllFiles().then(function (files) {
         files.forEach(function (f) {
@@ -364,6 +401,25 @@
     }
     loadTab(tabs.getActive());
     if (dropZone) dropZone.style.display = loaded.length ? 'none' : 'block';
+
+    // Firebase hazır olunca buluttan çek
+    CloudSync.onReady(function () {
+      CloudSync.loadAllFiles().then(function (files) {
+        files.forEach(function (f) {
+          try {
+            var data = new Uint8Array(f.data);
+            var wb = XLSX.read(data, { type: 'array' });
+            tabs.add(f.name, wb);
+          } catch (e) {}
+        });
+        if (files.length) toast(files.length + ' dosya buluttan yuklendi', 'success');
+        loadTab(tabs.getActive());
+      });
+      // Canlı değişiklik izle
+      CloudSync.watchChanges(function (name, rawData) {
+        pullFromCloud(name, rawData);
+      });
+    });
   }
 
   if (typeof XLSX !== 'undefined') init();

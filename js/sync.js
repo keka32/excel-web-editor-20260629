@@ -19,6 +19,11 @@ var CloudSync = (function () {
   var onRemoteChange = null;
   var lastSync = {};
 
+  var _onReadyCallbacks = [];
+
+  var lastError = '';
+  function _setError(msg) { lastError = msg; var b = document.getElementById('btnSync'); if (b) { b.title = msg; b.style.opacity = '0.5'; } }
+
   function init(cfg) {
     if (cfg) firebaseConfig = cfg;
     try {
@@ -27,13 +32,28 @@ var CloudSync = (function () {
         db = firebase.firestore();
         db.enablePersistence({ synchronizeTabs: true }).catch(function () {});
         ready = true;
-        console.log('[Sync] Firebase ready (anonymous)');
+        lastError = '';
+        var b = document.getElementById('btnSync');
+        if (b) { b.title = 'Senkronizasyon hazır'; b.style.opacity = '1'; }
+        console.log('[Sync] Firebase ready');
+        _onReadyCallbacks.forEach(function (cb) { try { cb(); } catch (e) {} });
       }).catch(function (e) {
-        console.warn('[Sync] Auth failed:', e.message);
+        var msg;
+        if (e.code === 'auth/operation-not-allowed') msg = 'Firebase Console → Auth → Anonymous\'u ETKINLESTIR';
+        else if (e.code === 'auth/network-request-failed') msg = 'Internet yok';
+        else msg = 'Auth: ' + (e.code || e.message);
+        _setError(msg);
+        console.warn('[Sync]', msg);
       });
     } catch (e) {
-      console.warn('[Sync] Firebase init failed:', e.message);
+      _setError('Firebase SDK yüklenemedi');
+      console.warn('[Sync] Init failed:', e.message);
     }
+  }
+
+  function onReady(cb) {
+    if (ready) { try { cb(); } catch (e) {} }
+    else _onReadyCallbacks.push(cb);
   }
 
   function isReady() { return ready && db; }
@@ -114,6 +134,8 @@ var CloudSync = (function () {
   return {
     init: init,
     isReady: isReady,
+    onReady: onReady,
+    lastError: function () { return lastError; },
     saveFile: saveFile,
     loadFile: loadFile,
     loadAllFiles: loadAllFiles,
@@ -121,3 +143,7 @@ var CloudSync = (function () {
     deleteFile: deleteFile,
   };
 })();
+
+// Auto-init on page load
+if (document.readyState === 'complete') { CloudSync.init(); }
+else document.addEventListener('DOMContentLoaded', function () { CloudSync.init(); });
